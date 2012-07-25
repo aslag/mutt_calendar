@@ -1,0 +1,43 @@
+mutt_calendar is a small application that makes for easier reading of raw ical
+text invitiations for single events.  It was intended for use by the mutt text-
+based email program.  As of version 0.1, it merely parses ical data provided
+as a String and prints basic information to the screen.  In future versions it
+will provide a convenient means to accept and reject invitations, and to add
+them to a Google calendar via some Google API.
+
+Building and Packaging the Project
+----------------------------------
+1. Download and install Gradle (see http://gradle.org/docs/current/userguide/installation.html)
+2. Download and install The Oracle JDK 7 (http://www.oracle.com/technetwork/java/javase/downloads/java-se-jdk-7-download-432154.html)
+3. from the root directory for this project, execute:
+
+ # gradle dist
+
+This will produce a folder, dist/, containing a jar and dependent jars in 
+dist/lib/.
+
+Running Unit Tests (and perhaps other code checks)
+
+In the root project directory, execute:
+
+ # gradle check
+
+This will produce a report of tests in build/reports/..
+
+Execution From the Command Line
+-------------------------------
+After executing "gradle dist" to build and package the project, try something 
+like:
+
+ # java -jar dist/mutt_calendar.jar ./ical_reader/src/test/resources/bc29c69c2083.ical
+
+Use with mutt
+-------------
+Build and package the project and copy the contents of dist/ to a nice spot, say 
+/usr/local/mutt_calendar.  Add this entry to the file ~/.mailcap:
+
+text/calendar; java -jar /usr/local/mutt_calendar/mutt_calendar.jar %s; copiousoutput;
+
+License
+-------
+mutt_calendar (and all subprojects) are GPL; see COPYING for license text.

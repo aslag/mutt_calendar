@@ -1,0 +1,165 @@
+/*
+This file is part of mutt_calendar.
+
+mutt_calendar is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+mutt_calendar is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with mutt_calendar.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+allprojects {
+  apply plugin: 'groovy' // builds java source too
+  apply plugin: 'eclipse'
+
+  /************************
+   extensions
+   ************************/
+  project.ext.distDir = "dist/"
+  project.ext.distLibDir = distDir + "lib/"
+
+  project.ext.commonSlf4jImpl = 'org.slf4j:slf4j-log4j12:1.6.+'
+
+  project.ext.commonGroovyEclipseSupport200 = [
+    'antlr:antlr:2.7.7',
+    'org.ow2.asm:asm:4.0',
+    'org.ow2.asm:asm-util:4.0',
+    'org.ow2.asm:asm-analysis:4.0',
+    'org.ow2.asm:asm-commons:4.0',
+    'org.codehaus.gpars:gpars:1.0-beta-2',
+    'org.fusesource.jansi:jansi:1.6',
+    'commons-cli:commons-cli:1.2',
+    'jline:jline:1.0',
+    'com.thoughtworks.xstream:xstream:1.4.2'
+  ]
+
+  /************************
+   repo config
+   ************************/
+
+  repositories {
+    maven {
+      url 'http://repo.tehlulz.com:8081/artifactory/libs-snapshot-local'
+      url 'http://repo.tehlulz.com:8081/artifactory/libs-release-local'
+      url 'http://repo.tehlulz.com:8081/artifactory/libs-fork-local'
+      url 'http://repo.tehlulz.com:8081/artifactory/repo'
+    }
+  }
+
+  /************************
+   project configuration 
+   ************************/
+
+  project.version = 0.1
+  targetCompatibility = 1.7
+  sourceCompatibility = 1.7
+
+  jar.baseName = project.name
+  
+  configurations {
+    groovyEclipseSupport {
+      extendsFrom compile
+    }
+  }
+
+  sourceSets {
+    eclipseJunitResources {
+      resources.srcDir file ('src/eclipse-junit-resources')
+    }
+  }
+
+  dependencies {
+
+    groovy 'org.codehaus.groovy:groovy-all:2.0.+'
+
+    groovyEclipseSupport commonGroovyEclipseSupport200
+
+    compile 'org.slf4j:slf4j-api:1.6.+'
+    compile 'net.jcip:jcip-annotations:1.0'
+    compile 'org.mnode.ical4j:ical4j:1.0.+'
+
+    runtime commonSlf4jImpl
+    runtime 'log4j:log4j:1.2.+'
+      
+    testCompile 'junit:junit:4.+'
+    testCompile ('org.spockframework:spock-core:0.7-groovy-2.0-SNAPSHOT')
+    {
+      exclude group: 'org.codehaus.groovy' // don't bother with the version of groovy spock depends on
+    }
+      
+    testRuntime commonSlf4jImpl
+  }
+
+  compileGroovy {
+    groovyOptions.fork(memoryMaximumSize: '128M')
+  }
+
+
+  /************************
+   eclipse conveniences
+   ************************/
+  eclipse.classpath.defaultOutputDir = file('eclipse-build')
+
+  // the following works only for java 1.6 and newer b/c the string has changed
+  if (targetCompatibility >= JavaVersion.toVersion(1.6)) {
+    eclipse.classpath.containers.clear()
+    eclipse.classpath.containers.add('org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-' + targetCompatibility)
+  }
+
+  eclipse {
+    classpath {
+      plusConfigurations += sourceSets.eclipseJunitResources.getCompileClasspath() // make sure eclipse-junit-resources is added first
+      plusConfigurations += project.configurations.testRuntime // using runtime instead of compiletime deps enables Eclipse to run test cases
+      plusConfigurations += project.configurations.groovyEclipseSupport
+    }
+  }
+
+  if (!project.name.startsWith(rootProject.name)) {
+    eclipse.project.name = rootProject.name + '-' + name // prepend root project's name to subprojects when generating eclipse project files
+  }
+
+  /************************
+   thorough cleanup task
+   ************************/
+  task deepClean(dependsOn: [clean,cleanEclipse], type: Delete) {
+    description = 'Runs both clean and cleanEclipse and deletes additional build artifacts (including Eclipse IDE files) such that the directory is suitable for initial check-in to a VCS'
+    delete('eclipse-build')
+    delete('.settings')
+    delete(distDir)
+  }
+
+} // end allprojects closure
+
+dependencies {
+  compile project(':ical_reader')
+}
+
+/************************
+root proj. packaging
+************************/
+//NOTE: this is done after the dependencies block to ensure dependent projects are included in classpath
+jar {
+   manifest {
+     attributes 'Main-Class': 'read_ical'
+     attributes 'Implementation-Title': project.name, 'Implementation-Version': version
+     attributes 'Class-Path': configurations.runtime.collect { distLibDir+it.name }.join(' ')
+   }
+}
+
+task dist(dependsOn: jar, type: Copy) {
+  description = "Prepares project for distribution by jarring projects and copying dependent libs to single dir.  Output will be written to $distDir"
+  into(distDir)
+  from configurations.default.allArtifacts.files
+  from "src/main/resources"
+
+  into(distLibDir) {
+    from configurations.default
+  }
+}
