@@ -46,10 +46,10 @@ allprojects {
 
   repositories {
     maven {
-      url 'http://repo.tehlulz.com:8081/artifactory/libs-snapshot-local'
-      url 'http://repo.tehlulz.com:8081/artifactory/libs-release-local'
+      url 'http://repo.tehlulz.com:8081/artifactory/libs-release'
+    }
+    maven {
       url 'http://repo.tehlulz.com:8081/artifactory/libs-fork-local'
-      url 'http://repo.tehlulz.com:8081/artifactory/repo'
     }
   }
 
